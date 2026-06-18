@@ -272,6 +272,47 @@
         }
         .delete-char-btn:hover { color: var(--danger-color); }
 
+        .char-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .char-toggle-btn {
+            background-color: #374151;
+            color: #d4d4d8;
+            border: 1px solid #4b5563;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .char-toggle-btn:hover { background-color: #4b5563; }
+
+        .character-card.char-inactive {
+            border-color: rgba(113, 113, 122, 0.45);
+            box-shadow: none;
+        }
+
+        .character-card.char-inactive .homework-scroll-area {
+            opacity: 0.22;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+
+        .character-card.char-inactive .character-name {
+            color: #a1a1aa;
+        }
+
+        .character-card.char-inactive .char-toggle-btn {
+            background-color: #059669;
+            border-color: #10b981;
+            color: white;
+        }
+
         .homework-scroll-area {
             display: flex;
             flex-direction: column;
@@ -414,10 +455,64 @@
             { id: "cat_3", name: "🎁 기타 및 이벤트" }
         ];
 
-        let characters = JSON.parse(localStorage.getItem(KEY_CHARS)) || [];
+        const defaultCharacters = [
+            { id: "char_demonic", name: "데모닉", disabled: false },
+            { id: "char_valkyrie", name: "발키리", disabled: false },
+            { id: "char_spear", name: "창술사", disabled: false },
+            { id: "char_beast", name: "환수사", disabled: false }
+        ];
+
+        function createHomework(charId, name, type, catId, maxCount) {
+            const safeName = name.replace(/\s+/g, '_');
+            const item = { id: `hw_${charId}_${safeName}`, name, type, catId, charId };
+            if (type === "count") item.maxCount = maxCount;
+            return item;
+        }
+
+        function createRosterHomeworkSet() {
+            const sets = {
+                char_demonic: [
+                    ["플레이크", "check", "cat_1_1"], ["오레하", "check", "cat_1_1"], ["생활", "check", "cat_1_1"],
+                    ["카던", "count", "cat_1_1", 6], ["가토", "count", "cat_1_1", 6], ["축구", "check", "cat_1_1"],
+                    ["필보", "check", "cat_1_2"], ["카게", "check", "cat_1_2"], ["모험섬", "check", "cat_1_2"],
+                    ["레이드", "count", "cat_2", 18], ["천상", "count", "cat_2", 9], ["증명", "count", "cat_2", 9], ["모래", "count", "cat_2", 6],
+                    ["영지상자", "check", "cat_2"], ["혈석", "check", "cat_2"], ["싱글", "count", "cat_2", 9], ["이정표", "count", "cat_2", 6]
+                ],
+                char_valkyrie: [
+                    ["플레이크", "check", "cat_1_1"], ["오레하", "check", "cat_1_1"], ["생활", "check", "cat_1_1"],
+                    ["카던", "count", "cat_1_1", 2], ["가토", "count", "cat_1_1", 2], ["주화", "check", "cat_1_1"], ["축구", "check", "cat_1_1"],
+                    ["필보", "check", "cat_1_2"], ["카게", "check", "cat_1_2"], ["모험섬", "check", "cat_1_2"],
+                    ["레이드", "count", "cat_2", 6], ["천상", "count", "cat_2", 2], ["증명", "count", "cat_2", 2], ["모래", "count", "cat_2", 2],
+                    ["영지상자", "check", "cat_2"], ["혈석", "check", "cat_2"], ["싱글", "count", "cat_2", 2], ["이정표", "count", "cat_2", 2]
+                ],
+                char_spear: [
+                    ["플레이크", "check", "cat_1_1"], ["오레하", "check", "cat_1_1"], ["생활", "check", "cat_1_1"], ["주화", "check", "cat_1_1"], ["축구", "check", "cat_1_1"],
+                    ["필보", "check", "cat_1_2"], ["카게", "check", "cat_1_2"],
+                    ["천상", "count", "cat_2", 1], ["증명", "count", "cat_2", 1], ["영지상자", "check", "cat_2"], ["혈석", "check", "cat_2"], ["싱글", "count", "cat_2", 1], ["이정표", "count", "cat_2", 1]
+                ],
+                char_beast: [
+                    ["플레이크", "check", "cat_1_1"], ["오레하", "check", "cat_1_1"], ["생활", "check", "cat_1_1"], ["주화", "check", "cat_1_1"], ["축구", "check", "cat_1_1"],
+                    ["필보", "check", "cat_1_2"], ["카게", "check", "cat_1_2"],
+                    ["천상", "count", "cat_2", 2], ["증명", "count", "cat_2", 2], ["영지상자", "check", "cat_2"], ["혈석", "check", "cat_2"], ["싱글", "count", "cat_2", 2], ["이정표", "count", "cat_2", 2]
+                ]
+            };
+
+            return Object.entries(sets).flatMap(([charId, rows]) => rows.map(row => createHomework(charId, row[0], row[1], row[2], row[3])));
+        }
+
+        function createDefaultCheckState(homeworkList = createRosterHomeworkSet()) {
+            const state = {};
+            homeworkList.forEach(hw => {
+                const key = `${hw.charId}_hw_${hw.id}`;
+                state[key] = hw.type === "count" ? (hw.maxCount ?? 0) : false;
+            });
+            return state;
+        }
+
+        let characters = JSON.parse(localStorage.getItem(KEY_CHARS)) || defaultCharacters;
         let categories = JSON.parse(localStorage.getItem(KEY_CATS)) || defaultCategories;
-        let homeworks = JSON.parse(localStorage.getItem(KEY_LIST)) || [];
-        let checkState = JSON.parse(localStorage.getItem(KEY_CHECKS)) || {};
+        let homeworks = JSON.parse(localStorage.getItem(KEY_LIST)) || createRosterHomeworkSet();
+        let checkState = JSON.parse(localStorage.getItem(KEY_CHECKS)) || createDefaultCheckState(homeworks);
 
 
         // ==============================
@@ -461,6 +556,9 @@
             localStorage.setItem(KEY_CATS, JSON.stringify(categories));
             localStorage.setItem(KEY_LIST, JSON.stringify(homeworks));
             localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
+            if (data.userTemplate !== undefined) {
+                localStorage.setItem(KEY_USER_TEMPLATE, JSON.stringify(data.userTemplate));
+            }
 
             applyingCloudData = false;
             render();
@@ -475,6 +573,7 @@
                     categories,
                     homeworks,
                     checkState,
+                    userTemplate: getBaseTemplate(),
                     updatedAt: Date.now()
                 }, { merge: true });
 
@@ -572,7 +671,7 @@
             if (characters.some(c => c.name === name)) return alert('중복된 원정대 이름입니다.');
 
             const newCharId = 'char_' + Date.now();
-            characters.push({ id: newCharId, name: name });
+            characters.push({ id: newCharId, name: name, disabled: false });
 
             const newHws = generateDefaultHwsForChar(newCharId);
             homeworks = homeworks.concat(newHws);
@@ -602,6 +701,13 @@
                 char.name = trimmed;
                 saveAndRender();
             }
+        }
+
+        function toggleCharacterActive(id) {
+            const char = characters.find(c => c.id === id);
+            if (!char) return;
+            char.disabled = !char.disabled;
+            saveAndRender();
         }
 
         function addCategory() {
@@ -700,8 +806,7 @@
 
         function toggleCheck(key) {
             checkState[key] = !checkState[key];
-            localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
-            render();
+            saveAndRender();
         }
 
         function handleCountClick(event, key, maxCount) {
@@ -714,8 +819,7 @@
             } else if (event.button === 2 && checkState[key] < maxCount) {
                 checkState[key]++;
             }
-            localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
-            render();
+            saveAndRender();
         }
 
         function filterCalendarContent(activeNames) {
@@ -731,69 +835,124 @@
                     }
                 });
             });
-            localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
-            render();
+            saveAndRender();
         }
 
         function saveCurrentAsBaseTemplate() {
-            if (confirm("⚠️ 현재 구성된 원정대별 숙제 항목과 최대 횟수 설정을 '나만의 기본값'으로 박제하시겠습니까?\n앞으로 리셋 버튼을 누르면 지금 저장하는 세팅 수치로 돌아옵니다.")) {
-                localStorage.setItem(KEY_USER_TEMPLATE, JSON.stringify(homeworks));
-                alert("💾 성공적으로 저장되었습니다! 이제 리셋을 누르면 현재 세팅 상태로 복구됩니다.");
+            if (confirm("⚠️ 현재 화면의 남은 횟수/체크 상태를 '리셋 기준값'으로 저장하시겠습니까?\n예: 카던이 현재 3이면 앞으로 전체 리셋 시 3으로 복구됩니다.")) {
+                const template = {
+                    homeworks: JSON.parse(JSON.stringify(homeworks)),
+                    checkState: JSON.parse(JSON.stringify(checkState)),
+                    savedAt: Date.now()
+                };
+
+                // 숫자형 숙제 중 아직 클릭하지 않아 checkState가 없는 항목은 현재 maxCount를 기준값으로 저장
+                homeworks.forEach(hw => {
+                    const key = `${hw.charId}_hw_${hw.id}`;
+                    if (hw.type === 'count' && template.checkState[key] === undefined) {
+                        template.checkState[key] = hw.maxCount ?? 0;
+                    }
+                    if (hw.type === 'check' && template.checkState[key] === undefined) {
+                        template.checkState[key] = false;
+                    }
+                });
+
+                localStorage.setItem(KEY_USER_TEMPLATE, JSON.stringify(template));
+                saveAndRender();
+                alert("💾 저장되었습니다! 이제 전체 리셋/카테고리 리셋 시 현재 화면 상태로 복구됩니다.");
             }
         }
 
         function getBaseTemplate() {
-            return JSON.parse(localStorage.getItem(KEY_USER_TEMPLATE)) || null;
+            const raw = localStorage.getItem(KEY_USER_TEMPLATE);
+            if (!raw) return null;
+
+            try {
+                const parsed = JSON.parse(raw);
+
+                // 새 형식: { homeworks, checkState, savedAt }
+                if (parsed && !Array.isArray(parsed) && parsed.homeworks) return parsed;
+
+                // 예전 형식: homeworks 배열만 저장되어 있던 경우 호환
+                if (Array.isArray(parsed)) {
+                    return { homeworks: parsed, checkState: {} };
+                }
+
+                return null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+
+        function applyBuiltInRosterDefaults() {
+            if (confirm('현재 화면 구성을 기본 스케줄표로 덮어쓰시겠습니까?\n기존 원정대/숙제/체크 상태가 현재 기본값으로 초기화됩니다.')) {
+                characters = JSON.parse(JSON.stringify(defaultCharacters));
+                categories = JSON.parse(JSON.stringify(defaultCategories));
+                homeworks = createRosterHomeworkSet();
+                checkState = createDefaultCheckState(homeworks);
+                localStorage.setItem(KEY_USER_TEMPLATE, JSON.stringify({
+                    homeworks: JSON.parse(JSON.stringify(homeworks)),
+                    checkState: JSON.parse(JSON.stringify(checkState)),
+                    savedAt: Date.now(),
+                    builtIn: true
+                }));
+                saveAndRender();
+                alert('기본 스케줄표가 적용되었습니다.');
+            }
         }
 
         function resetCategoryChecks(catId, catName) {
             if (confirm(`모든 원정대의 [${catName}] 그룹 숙제를 리셋하시겠습니까?`)) {
-                const targetHws = homeworks.filter(hw => hw.catId === catId);
                 const userTemplate = getBaseTemplate();
+                const templateHws = userTemplate?.homeworks || [];
+                const templateState = userTemplate?.checkState || {};
+                const targetHws = homeworks.filter(hw => hw.catId === catId);
 
                 targetHws.forEach(hw => {
-                    characters.forEach(char => {
-                        if (hw.charId === char.id) {
-                            const key = `${char.id}_hw_${hw.id}`;
-                            if (hw.type === 'check') {
-                                checkState[key] = false; 
-                            } else {
-                                let restoredMax = hw.maxCount;
-                                if (userTemplate) {
-                                    const templateHw = userTemplate.find(t => t.id === hw.id);
-                                    if (templateHw && templateHw.maxCount !== undefined) restoredMax = templateHw.maxCount;
-                                }
-                                checkState[key] = restoredMax;
-                            }
-                        }
-                    });
+                    const key = `${hw.charId}_hw_${hw.id}`;
+
+                    if (templateState[key] !== undefined) {
+                        checkState[key] = templateState[key];
+                        return;
+                    }
+
+                    if (hw.type === 'check') {
+                        checkState[key] = false;
+                    } else {
+                        const templateHw = templateHws.find(t => t.id === hw.id);
+                        checkState[key] = templateHw?.maxCount ?? hw.maxCount ?? 0;
+                    }
                 });
-                localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
-                render();
+
+                saveAndRender();
             }
         }
 
         function resetAllChecks() {
             if (confirm('모든 원정대의 일일/주간을 포함한 모든 체크 기록을 초기화하시겠습니까?')) {
                 const userTemplate = getBaseTemplate();
-                checkState = {}; 
+                const templateHws = userTemplate?.homeworks || [];
+                const templateState = userTemplate?.checkState || {};
+                checkState = {};
 
                 homeworks.forEach(hw => {
-                    if (hw.type === 'count') {
-                        let restoredMax = hw.maxCount;
-                        if (userTemplate) {
-                            const templateHw = userTemplate.find(t => t.id === hw.id);
-                            if (templateHw && templateHw.maxCount !== undefined) restoredMax = templateHw.maxCount;
-                        }
-                        characters.forEach(char => {
-                            if (hw.charId === char.id) {
-                                checkState[`${char.id}_hw_${hw.id}`] = restoredMax;
-                            }
-                        });
+                    const key = `${hw.charId}_hw_${hw.id}`;
+
+                    if (templateState[key] !== undefined) {
+                        checkState[key] = templateState[key];
+                        return;
+                    }
+
+                    if (hw.type === 'check') {
+                        checkState[key] = false;
+                    } else {
+                        const templateHw = templateHws.find(t => t.id === hw.id);
+                        checkState[key] = templateHw?.maxCount ?? hw.maxCount ?? 0;
                     }
                 });
-                localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
-                render();
+
+                saveAndRender();
             }
         }
 
@@ -802,6 +961,11 @@
             localStorage.setItem(KEY_CATS, JSON.stringify(categories));
             localStorage.setItem(KEY_LIST, JSON.stringify(homeworks));
             localStorage.setItem(KEY_CHECKS, JSON.stringify(checkState));
+
+            if (typeof saveCloudDataNow === 'function') {
+                saveCloudDataNow();
+            }
+
             render();
         }
 
@@ -859,6 +1023,7 @@
                 .map(c => `<button onclick="resetCategoryChecks('${c.id}', '${c.name}')">${c.name} 리셋</button>`)
                 .join('');
             resetHtml += `<button class="reset-btn" onclick="resetAllChecks()">전체 리셋</button>`;
+            resetHtml += `<button style="background-color:#7c3aed;" onclick="applyBuiltInRosterDefaults()">🔄 기본 스케줄 적용</button>`;
             resetHtml += `<button class="save-template-btn" onclick="saveCurrentAsBaseTemplate()">💾 현재 세팅을 기본값으로 저장</button>`;
             document.getElementById('categoryResetContainer').innerHTML = resetHtml;
 
@@ -872,12 +1037,16 @@
 
             characters.forEach(char => {
                 const card = document.createElement('div');
-                card.className = 'character-card';
+                const isInactive = char.disabled === true;
+                card.className = `character-card ${isInactive ? 'char-inactive' : ''}`;
 
                 let html = `
                     <div class="character-header">
                         <span class="character-name" title="더블 클릭하여 이름 수정" ondblclick="editCharacterName('${char.id}', '${char.name}')">${char.name}</span>
-                        <button class="delete-char-btn" onclick="deleteCharacter('${char.id}', '${char.name}')">삭제</button>
+                        <div class="char-actions">
+                            <button class="char-toggle-btn" title="이 원정대 카드만 접기/비활성화" onclick="toggleCharacterActive('${char.id}')">${isInactive ? '활성화' : '비활성화'}</button>
+                            <button class="delete-char-btn" onclick="deleteCharacter('${char.id}', '${char.name}')">삭제</button>
+                        </div>
                     </div>
                     <div class="homework-scroll-area">
                 `;
@@ -904,13 +1073,15 @@
                             `;
                         } else {
                             const userTemplate = getBaseTemplate();
+                            const templateHws = userTemplate?.homeworks || [];
+                            const templateState = userTemplate?.checkState || {};
                             let currentMax = task.maxCount;
-                            if (userTemplate) {
-                                const templateHw = userTemplate.find(t => t.id === task.id);
-                                if (templateHw && templateHw.maxCount !== undefined) currentMax = templateHw.maxCount;
-                            }
+                            const templateHw = templateHws.find(t => t.id === task.id);
+                            if (templateHw && templateHw.maxCount !== undefined) currentMax = templateHw.maxCount;
 
-                            const currentLeft = (checkState[key] !== undefined && typeof checkState[key] === 'number') ? checkState[key] : currentMax;
+                            const currentLeft = (checkState[key] !== undefined && typeof checkState[key] === 'number')
+                                ? checkState[key]
+                                : (templateState[key] !== undefined && typeof templateState[key] === 'number' ? templateState[key] : currentMax);
                             const isDoneClass = currentLeft === 0 ? 'done' : '';
                             html += `
                                 <div class="todo-item ${isDoneClass}" 
