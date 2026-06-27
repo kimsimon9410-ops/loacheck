@@ -216,6 +216,37 @@
             border-color: var(--danger-color);
         }
 
+        .todo-order-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .order-small-btn {
+            background-color: rgba(79, 70, 229, 0.14);
+            color: #c7d2fe;
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .order-small-btn:hover {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+
         /* 메인 카드 컨테이너 */
         .container {
             display: grid;
@@ -785,6 +816,8 @@
                     const parsedMax = parseInt(newMax);
                     if (!isNaN(parsedMax) && parsedMax >= 0) {
                         hw.maxCount = parsedMax;
+                        const key = `${hw.charId}_hw_${hw.id}`;
+                        checkState[key] = parsedMax;
                     }
                 }
             }
@@ -820,6 +853,11 @@
                 checkState[key]++;
             }
             saveAndRender();
+        }
+
+        function handleCountRightClick(event, key, maxCount) {
+            event.preventDefault();
+            handleCountClick(event, key, maxCount);
         }
 
         function filterCalendarContent(activeNames) {
@@ -956,6 +994,26 @@
             }
         }
 
+
+        function moveHomeworkInSettings(id, direction) {
+            const hw = homeworks.find(h => h.id === id);
+            if (!hw) return;
+
+            const sameGroup = homeworks.filter(h => h.charId === hw.charId && h.catId === hw.catId);
+            const currentPos = sameGroup.findIndex(h => h.id === id);
+            const target = sameGroup[currentPos + direction];
+            if (!target) return;
+
+            const fromIndex = homeworks.findIndex(h => h.id === id);
+            const [moved] = homeworks.splice(fromIndex, 1);
+
+            const targetIndexAfterRemove = homeworks.findIndex(h => h.id === target.id);
+            const insertIndex = direction < 0 ? targetIndexAfterRemove : targetIndexAfterRemove + 1;
+            homeworks.splice(insertIndex, 0, moved);
+
+            saveAndRender();
+        }
+
         function saveAndRender() {
             localStorage.setItem(KEY_CHARS, JSON.stringify(characters));
             localStorage.setItem(KEY_CATS, JSON.stringify(categories));
@@ -1013,7 +1071,11 @@
                 return `
                     <div class="manage-item">
                         <span ondblclick="editHomeworkDetail('${h.id}')">[${charName}][${catName}] ${h.name} ${h.type=='count'?`(${h.maxCount}회)` : '(체크)'}</span>
-                        <button class="del-small-btn" onclick="deleteHomework('${h.id}', '${h.name}')">×</button>
+                        <div class="todo-order-controls">
+                            <button class="order-small-btn" title="위로 이동" onclick="moveHomeworkInSettings('${h.id}', -1)">↑</button>
+                            <button class="order-small-btn" title="아래로 이동" onclick="moveHomeworkInSettings('${h.id}', 1)">↓</button>
+                            <button class="del-small-btn" onclick="deleteHomework('${h.id}', '${h.name}')">×</button>
+                        </div>
                     </div>
                 `;
             }).join('') || '<div class="manage-item" style="color:#71717a; text-align:center;">검색 결과가 없습니다.</div>';
@@ -1064,7 +1126,11 @@
                             const isChecked = checkState[key] === true ? 'checked' : '';
                             const isDoneClass = checkState[key] === true ? 'done' : '';
                             html += `
-                                <div class="todo-item ${isDoneClass}" onclick="toggleCheck('${key}')">
+                                <div class="todo-item ${isDoneClass}"
+                                     data-hw-id="${task.id}"
+                                     data-char-id="${char.id}"
+                                     data-cat-id="${cat.id}"
+                                     onclick="toggleCheck('${key}')">
                                     <div class="todo-left">
                                         <input type="checkbox" ${isChecked} onclick="event.stopPropagation(); toggleCheck('${key}')">
                                         <span>${task.name}</span>
@@ -1072,21 +1138,18 @@
                                 </div>
                             `;
                         } else {
-                            const userTemplate = getBaseTemplate();
-                            const templateHws = userTemplate?.homeworks || [];
-                            const templateState = userTemplate?.checkState || {};
-                            let currentMax = task.maxCount;
-                            const templateHw = templateHws.find(t => t.id === task.id);
-                            if (templateHw && templateHw.maxCount !== undefined) currentMax = templateHw.maxCount;
-
+                            const currentMax = task.maxCount ?? 0;
                             const currentLeft = (checkState[key] !== undefined && typeof checkState[key] === 'number')
                                 ? checkState[key]
-                                : (templateState[key] !== undefined && typeof templateState[key] === 'number' ? templateState[key] : currentMax);
+                                : currentMax;
                             const isDoneClass = currentLeft === 0 ? 'done' : '';
                             html += `
                                 <div class="todo-item ${isDoneClass}" 
-                                     onmousedown="handleCountClick(event, '${key}', ${currentMax})" 
-                                     oncontextmenu="event.preventDefault();">
+                                     data-hw-id="${task.id}"
+                                     data-char-id="${char.id}"
+                                     data-cat-id="${cat.id}"
+                                     onclick="handleCountClick(event, '${key}', ${currentMax})" 
+                                     oncontextmenu="handleCountRightClick(event, '${key}', ${currentMax})">
                                     <div class="todo-left">
                                         <span style="margin-left: 2px;">${task.name}</span>
                                     </div>
